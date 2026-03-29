@@ -3,6 +3,7 @@
 import streamlit as st
 import pandas as pd
 from google.cloud import bigquery
+from google.oauth2 import service_account
 
 BQ_PROJECT  = st.secrets["BQ_PROJECT"]
 BQ_LOCATION = "EU"
@@ -11,13 +12,24 @@ BQ_DATASET  = "analytics"
 
 @st.cache_resource
 def get_bq_client() -> bigquery.Client:
-    """BQ client via gcloud ADC — EU location enforced."""
-    return bigquery.Client(project=BQ_PROJECT, location=BQ_LOCATION)
+    """
+    BQ client using service account from Streamlit secrets.
+    Required on Streamlit Cloud — gcloud ADC is not available there.
+    """
+    credentials = service_account.Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"],
+        scopes=["https://www.googleapis.com/auth/cloud-platform"],
+    )
+    return bigquery.Client(
+        project=BQ_PROJECT,
+        credentials=credentials,
+        location=BQ_LOCATION,
+    )
 
 
 @st.cache_data(ttl=600)
 def load_domain_insights() -> pd.DataFrame:
-    """Load mart_domain_insights — one row per domain, ordered by outreach priority."""
+    """Load mart_domain_insights — one row per domain."""
     query = f"""
         SELECT *
         FROM `{BQ_PROJECT}.{BQ_DATASET}.mart_domain_insights`
