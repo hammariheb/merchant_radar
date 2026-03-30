@@ -1,5 +1,3 @@
-# ai_enrichment/prompts.py
-
 SYSTEM_PROMPT = """You are the best CX analyst for a customer support platform for eCommerce.
 Analyze each review and return ONLY a valid JSON object with a "results" array.
 No markdown, no explanation — only JSON.

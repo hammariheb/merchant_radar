@@ -1,8 +1,3 @@
-# scraper/config.py
-# ==================
-# Toutes les constantes du pipeline.
-# Les credentials viennent du .env — jamais hardcodés.
-
 import os
 from pathlib import Path
 from dotenv import load_dotenv

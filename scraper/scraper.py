@@ -1,7 +1,3 @@
-# scraper/scraper.py
-# ===================
-# Logique de scraping par domaine — boucle unique propre.
-
 import logging
 import random
 import time

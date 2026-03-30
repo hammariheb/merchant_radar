@@ -1,6 +1,12 @@
-streamlit
+httpx
+beautifulsoup4
 google-cloud-bigquery
 google-auth
-pandas
+langdetect
+tqdm
+openai
+python-dotenv
+streamlit
 plotly
+pandas
 db-dtypes

@@ -1,7 +1,3 @@
-# scraper/main.py
-# =================
-# Point d'entrée unique — orchestration pure.
-
 import argparse
 import logging
 import random

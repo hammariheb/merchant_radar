@@ -1,12 +1,3 @@
-# scraper/http_client.py
-# =======================
-# Construction des headers HTTP et fetch des pages Trustpilot.
-#
-# Stratégie finale :
-#   - follow_redirects=True → httpx suit les 308 automatiquement
-#   - On lit l'URL finale pour extraire le slug réel si Trustpilot a redirigé
-#   - 404 sur l'URL finale = domaine vraiment introuvable
-
 import json
 import logging
 import random

@@ -1,7 +1,3 @@
-# scraper/bq_client.py
-# =====================
-# Toute la logique BigQuery : connexion, création table, lecture domaines, upload.
-
 import logging
 
 from google.cloud import bigquery
@@ -70,7 +66,7 @@ def load_domains(
     start_from: str | None = None,
 ) -> list[str]:
     """
-    Lit la colonne domain depuis leads.leads_table.
+    Lit la colonne domain depuis leads.leads_raw.
     Normalise en lowercase + strip.
     """
     start_clause = f"AND LOWER(TRIM(domain)) >= '{start_from.lower()}'" if start_from else ""
