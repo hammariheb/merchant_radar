@@ -1,15 +1,3 @@
-# .github/workflows/ci.yml
-# CI pipeline — runs on every pull request to main.
-#
-# Steps:
-#   1. Python linting (ruff)
-#   2. Python type checking (mypy)
-#   3. Unit tests (pytest)
-#   4. dbt compile + test on slim CI dataset
-#
-# Nothing is deployed — CI only validates that the code is correct.
-# Deployment happens via cd.yml on merge to main.
-
 name: CI — Lint, Test, dbt Compile
 
 on:
@@ -123,9 +111,7 @@ jobs:
       - name: dbt compile
         working-directory: dbt_transformation
         run: dbt compile --no-partial-parse
-        # compile only — no BigQuery calls, just validates SQL syntax
-        # and Jinja templating
 
       - name: dbt parse (validate schema.yml)
         working-directory: dbt_transformation
-        run: dbt parse --no-partial-parse
+        run: dbt parse 
