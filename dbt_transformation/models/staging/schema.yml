@@ -41,7 +41,7 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('stg_leads')
+              to: ref('stg_domains')
               field: domain_id
 
       - name: domain

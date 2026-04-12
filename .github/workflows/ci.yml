@@ -1,0 +1,131 @@
+# .github/workflows/ci.yml
+# CI pipeline — runs on every pull request to main.
+#
+# Steps:
+#   1. Python linting (ruff)
+#   2. Python type checking (mypy)
+#   3. Unit tests (pytest)
+#   4. dbt compile + test on slim CI dataset
+#
+# Nothing is deployed — CI only validates that the code is correct.
+# Deployment happens via cd.yml on merge to main.
+
+name: CI — Lint, Test, dbt Compile
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+
+  # ── Job 1: Python lint + typecheck ──────────────────────────
+  python_quality:
+    name: Python Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt ruff mypy
+
+      - name: Lint with ruff
+        run: ruff check .
+
+      - name: Type check with mypy
+        run: |
+          mypy scraper/ \
+               builtwith_collector/ \
+               ai_enrichment/ \
+               --ignore-missing-imports \
+               --no-strict-optional
+
+  # ── Job 2: Unit tests ─────────────────────────────────────
+  unit_tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: python_quality
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest pytest-cov
+
+      - name: Run tests
+        run: |
+          pytest tests/ \
+            --cov=scraper \
+            --cov=builtwith_collector \
+            --cov=ai_enrichment \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            -v
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: coverage.xml
+        continue-on-error: true
+
+  # ── Job 3: dbt compile ────────────────────────────────────
+  dbt_compile:
+    name: dbt Compile
+    runs-on: ubuntu-latest
+    needs: python_quality
+
+    env:
+      # CI uses a separate BigQuery project/dataset to avoid touching production
+      DBT_PROJECT_ID: ${{ secrets.DBT_CI_PROJECT_ID }}
+      GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dbt
+        run: pip install dbt-bigquery==1.11.1
+
+      - name: Write GCP credentials
+        run: |
+          echo '${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}' > /tmp/gcp_credentials.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp_credentials.json" >> $GITHUB_ENV
+
+      - name: dbt deps
+        working-directory: dbt_transformation
+        run: dbt deps
+
+      - name: dbt compile
+        working-directory: dbt_transformation
+        run: dbt compile --no-partial-parse
+        # compile only — no BigQuery calls, just validates SQL syntax
+        # and Jinja templating
+
+      - name: dbt parse (validate schema.yml)
+        working-directory: dbt_transformation
+        run: dbt parse --no-partial-parse

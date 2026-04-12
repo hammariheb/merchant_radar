@@ -1,6 +1,8 @@
 import logging
+import time
+
 from google.cloud import bigquery
- 
+
 from .config import (
     BQ_PROJECT,
     BQ_LOCATION,
@@ -13,38 +15,45 @@ from .config import (
     REVIEWS_TABLE,
     REVIEWS_TABLE_FR,
 )
- 
+
 log = logging.getLogger(__name__)
- 
-# ── BQ Schema — identical for both tables ─────────────────────
+
 BQ_SCHEMA = [
-    bigquery.SchemaField("domain",          "STRING",    description="Original domain from leads source"),
-    bigquery.SchemaField("trustpilot_slug", "STRING",    description="Real Trustpilot slug (may differ from domain)"),
-    bigquery.SchemaField("review_id",       "STRING",    description="Unique Trustpilot review ID"),
-    bigquery.SchemaField("review_text",     "STRING",    description="Review body"),
-    bigquery.SchemaField("review_title",    "STRING",    description="Review title"),
-    bigquery.SchemaField("star_rating",     "INTEGER",   description="Rating 1-5"),
-    bigquery.SchemaField("date_published",  "DATE",      description="Publication date"),
-    bigquery.SchemaField("reviewer_name",   "STRING",    description="Reviewer display name"),
-    bigquery.SchemaField("company_replied", "BOOLEAN",   description="Merchant replied?"),
-    bigquery.SchemaField("language",        "STRING",    description="Detected language ISO 639-1"),
-    bigquery.SchemaField("ingested_at",     "TIMESTAMP", description="Pipeline ingestion timestamp"),
+    bigquery.SchemaField("domain",          "STRING"),
+    bigquery.SchemaField("trustpilot_slug", "STRING"),
+    bigquery.SchemaField("review_id",       "STRING"),
+    bigquery.SchemaField("review_text",     "STRING"),
+    bigquery.SchemaField("review_title",    "STRING"),
+    bigquery.SchemaField("star_rating",     "INTEGER"),
+    bigquery.SchemaField("date_published",  "DATE"),
+    bigquery.SchemaField("reviewer_name",   "STRING"),
+    bigquery.SchemaField("company_replied", "BOOLEAN"),
+    bigquery.SchemaField("language",        "STRING"),
+    bigquery.SchemaField("ingested_at",     "TIMESTAMP"),
 ]
- 
- 
+
+
 def get_client() -> bigquery.Client:
-    """Connects via gcloud ADC — requires: gcloud auth application-default login."""
     client = bigquery.Client(project=BQ_PROJECT)
     log.info(f"✅ BigQuery connected — {BQ_PROJECT}")
     return client
- 
- 
-def _ensure_table(client: bigquery.Client, table_id: str) -> None:
-    """
-    Creates a reviews table if it doesn't exist.
-    Partitioned by ingested_at, clustered by domain.
-    Shared by both pipelines — same schema, different table names.
-    """
+
+
+def _source_table(source: str) -> tuple[str, str, str]:
+    """Returns (leads_dataset, leads_table, reviews_table) for the given source."""
+    if source == "fr":
+        return FR_LEADS_DATASET, FR_LEADS_TABLE, REVIEWS_TABLE_FR
+    return LEADS_DATASET, LEADS_TABLE, REVIEWS_TABLE
+
+
+def ensure_reviews_table(client: bigquery.Client, source: str = "default") -> None:
+    _, _, reviews_table = _source_table(source)
+
+    ds          = bigquery.Dataset(f"{BQ_PROJECT}.{REVIEWS_DATASET}")
+    ds.location = BQ_LOCATION
+    client.create_dataset(ds, exists_ok=True)
+
+    table_id                = f"{BQ_PROJECT}.{REVIEWS_DATASET}.{reviews_table}"
     table                   = bigquery.Table(table_id, schema=BQ_SCHEMA)
     table.time_partitioning = bigquery.TimePartitioning(
         type_=bigquery.TimePartitioningType.DAY,
@@ -53,88 +62,85 @@ def _ensure_table(client: bigquery.Client, table_id: str) -> None:
     table.clustering_fields = ["domain"]
     client.create_table(table, exists_ok=True)
     log.info(f"✅ Table ready: {table_id}")
- 
- 
-def ensure_reviews_table(client: bigquery.Client, source: str = "default") -> None:
-    """
-    Ensures the reviews dataset and the correct target table exist.
- 
-    source="default" → creates reviews.reviews_raw
-    source="fr"      → creates reviews.reviews_raw_fr
-    """
-    # Dataset — shared by both tables
-    ds          = bigquery.Dataset(f"{BQ_PROJECT}.{REVIEWS_DATASET}")
-    ds.location = BQ_LOCATION
-    client.create_dataset(ds, exists_ok=True)
- 
-    # Target table depends on source
-    table_name = REVIEWS_TABLE_FR if source == "fr" else REVIEWS_TABLE
-    table_id   = f"{BQ_PROJECT}.{REVIEWS_DATASET}.{table_name}"
-    _ensure_table(client, table_id)
- 
- 
+    time.sleep(3)
+
+
 def load_domains(
     client:     bigquery.Client,
     source:     str        = "default",
     limit:      int | None = None,
     start_from: str | None = None,
 ) -> list[str]:
-    """
-    Loads domains from the correct leads source table.
- 
-    source="default" → reads from leads.leads_table
-                        (original Gorgias leads)
- 
-    source="fr"      → reads from analytics.stg_leads_builtwith_fr
-                        (BuiltWith French top eCommerce)
- 
-    Both queries normalize domains with LOWER(TRIM()) and deduplicate.
-    start_from enables resuming after a crash alphabetically.
-    """
-    if source == "fr":
-        from_clause = f"`{BQ_PROJECT}.{FR_LEADS_DATASET}.{FR_LEADS_TABLE}`"
-        label       = f"{FR_LEADS_DATASET}.{FR_LEADS_TABLE}"
-    else:
-        from_clause = f"`{BQ_PROJECT}.{LEADS_DATASET}.{LEADS_TABLE}`"
-        label       = f"{LEADS_DATASET}.{LEADS_TABLE}"
- 
+    leads_dataset, leads_table, _ = _source_table(source)
+
     start_clause = f"AND LOWER(TRIM(domain)) >= '{start_from.lower()}'" if start_from else ""
     limit_clause = f"LIMIT {limit}" if limit else ""
- 
+
     query = f"""
         SELECT DISTINCT LOWER(TRIM(domain)) AS domain
-        FROM {from_clause}
+        FROM `{BQ_PROJECT}.{leads_dataset}.{leads_table}`
         WHERE domain IS NOT NULL
           AND TRIM(domain) != ''
           {start_clause}
         ORDER BY domain
         {limit_clause}
     """
- 
     domains = [row["domain"] for row in client.query(query, location=BQ_LOCATION).result()]
-    log.info(f"✅ {len(domains)} domains loaded from {label}")
+    log.info(f"✅ {len(domains)} domains loaded from {leads_dataset}.{leads_table}")
     return domains
- 
- 
+
+
+def get_last_scraped_dates(
+    client: bigquery.Client,
+    source: str = "default",
+) -> dict[str, str]:
+    """
+    Returns a dict mapping domain → last review date already in BigQuery.
+    Used for incremental scraping: the scraper stops when it hits a review
+    older than or equal to this date.
+
+    Example return:
+        {
+            "gymshark.com":  "2025-03-15",
+            "sezane.com":    "2025-03-10",
+        }
+
+    Domains not yet scraped are not included in the dict — the scraper
+    treats missing entries as "scrape everything" (full scrape for new domains).
+    """
+    _, _, reviews_table = _source_table(source)
+
+    query = f"""
+        SELECT
+            domain,
+            CAST(MAX(date_published) AS STRING) AS last_date
+        FROM `{BQ_PROJECT}.{REVIEWS_DATASET}.{reviews_table}`
+        WHERE date_published IS NOT NULL
+        GROUP BY domain
+    """
+    try:
+        result = client.query(query, location=BQ_LOCATION).result()
+        dates  = {row["domain"]: row["last_date"] for row in result}
+        log.info(f"✅ {len(dates)} domains with existing reviews loaded")
+        return dates
+    except Exception as e:
+        log.warning(f"  Could not load last scraped dates: {e} — full scrape will run")
+        return {}
+
+
 def upload_reviews(
     client: bigquery.Client,
     rows:   list[dict],
     source: str = "default",
 ) -> None:
-    """
-    Uploads reviews to the correct target table.
- 
-    source="default" → reviews.reviews_raw
-    source="fr"      → reviews.reviews_raw_fr
-    """
     if not rows:
         return
- 
-    table_name = REVIEWS_TABLE_FR if source == "fr" else REVIEWS_TABLE
-    table_id   = f"{BQ_PROJECT}.{REVIEWS_DATASET}.{table_name}"
- 
-    for start in range(0, len(rows), BQ_BATCH_SIZE):
-        batch  = rows[start:start + BQ_BATCH_SIZE]
+
+    _, _, reviews_table = _source_table(source)
+    table_id            = f"{BQ_PROJECT}.{REVIEWS_DATASET}.{reviews_table}"
+
+    for i in range(0, len(rows), BQ_BATCH_SIZE):
+        batch  = rows[i:i + BQ_BATCH_SIZE]
         errors = client.insert_rows_json(table_id, batch)
         if errors:
             log.error(f"❌ BQ insert errors: {errors[:2]}")

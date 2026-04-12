@@ -2,7 +2,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 
-load_dotenv(Path(__file__).parent.parent / ".env", override=True)
+load_dotenv(Path(__file__).parent.parent / ".env", override=False)
 
 
 def _require(key: str) -> str:
@@ -17,7 +17,7 @@ BQ_LOCATION = "EU"
 
 # ── Source 1 : target leads (original) ──────────────────────
 LEADS_DATASET   = "leads"
-LEADS_TABLE     = "leads_table"
+LEADS_TABLE     = "leads_raw"
 
 # ── Source 2 : BuiltWith French eCommerce leads ───────────────
 FR_LEADS_DATASET = "analytics"

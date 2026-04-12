@@ -17,12 +17,6 @@ SEED_COLUMNS = [
     "source",
 ]
 
-# ── Default seed path ─────────────────────────────────────────
-# Resolves to: <project_root>/dbt_transformation/seeds/leads_builtwith_fr.csv
-# __file__ = builtwith_collector/exporter.py
-# .parent   = builtwith_collector/
-# .parent   = <project_root>/
-# then down into dbt_transformation/seeds/
 DEFAULT_SEED_PATH = (
     Path(__file__).parent.parent
     / "dbt_transformation"
