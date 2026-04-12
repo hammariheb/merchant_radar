@@ -23,5 +23,10 @@ dbt_transformation/profiles.yml
 .DS_Store
 Thumbs.db
 
+#Airflow
+airflow/logs/**
+__pycache__/
+'nairflow/logs/
+
 #Docker
 gcp_credentials.json
