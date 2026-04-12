@@ -1,0 +1,4 @@
+[lint]
+select = ["E9", "F", "W"]
+ignore = ["F541", "E701", "E741"]
+exclude = ["dashboard/", "airflow/", "dbt_transformation/"]
