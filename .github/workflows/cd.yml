@@ -24,7 +24,7 @@ jobs:
           cache: pip
 
       - name: Install
-        run: pip install "dbt-bigquery==1.8.2" "protobuf>=3.20.0,<5.0.0"
+        run: pip install "dbt-bigquery==1.9.0" "protobuf>=3.20.0,<5.0.0"
 
       - name: Write GCP credentials
         run: |
@@ -36,7 +36,7 @@ jobs:
       - name: dbt deps
         working-directory: dbt_transformation
         run: dbt deps
-        
+
       - name: dbt build
         working-directory: dbt_transformation
         run: dbt build --no-partial-parse --fail-fast
