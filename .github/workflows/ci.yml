@@ -29,6 +29,7 @@ jobs:
           echo '${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}' > /tmp/gcp_credentials.json
           echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp_credentials.json" >> $GITHUB_ENV
           echo "DBT_PROFILES_DIR=$GITHUB_WORKSPACE/dbt_transformation" >> $GITHUB_ENV
+          echo "BQ_PROJECT=${{ secrets.BQ_PROJECT }}" >> $GITHUB_ENV
 
       - name: dbt compile
         working-directory: dbt_transformation
