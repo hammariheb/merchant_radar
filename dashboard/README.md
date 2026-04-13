@@ -25,7 +25,7 @@ Requires `GOOGLE_APPLICATION_CREDENTIALS` and `BQ_PROJECT` to be set.
 
 ## Deployed
 
-### Live Dashboard at: https://merchantradar.streamlit.app/
+### 👉 Live Dashboard at: https://merchantradar.streamlit.app/
 
 Streamlit Cloud reads secrets from the app's Secrets settings
 (equivalent to the `.env` file).
