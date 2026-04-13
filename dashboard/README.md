@@ -25,7 +25,6 @@ Requires `GOOGLE_APPLICATION_CREDENTIALS` and `BQ_PROJECT` to be set.
 
 ## Deployed
 
-Live at: https://gorgiasdash.streamlit.app
 
 Streamlit Cloud reads secrets from the app's Secrets settings
 (equivalent to the `.env` file).
