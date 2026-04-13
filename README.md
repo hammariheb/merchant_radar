@@ -29,6 +29,15 @@ merchant_radar/
 └── .github/workflows/            # CI (lint + dbt compile) and CD (dbt build)
 ```
 
+## 🚀 Live Dashboard
+
+
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://merchantradar.streamlit.app)
+
+👉 **[merchantradar.streamlit.app](https://merchantradar.streamlit.app)**
+
+
+
 ## Quickstart — local run
 
 ```bash
