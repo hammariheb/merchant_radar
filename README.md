@@ -1,4 +1,4 @@
-# MerchantRadar
+# Overview
 
 End-to-end analytics pipeline that identifies eCommerce merchants who are struggling with customer experience — and surfaces them as Target leads.
 
