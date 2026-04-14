@@ -2,7 +2,7 @@
 
 Enriches raw Trustpilot reviews with AI-generated analysis using GPT-4o-mini.
 For each review, it produces: sentiment, category, pain point, and an actionable
-insight for the sales team.
+insights.
 
 ## Sources
 
