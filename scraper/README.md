@@ -6,7 +6,7 @@ Scrapes Trustpilot reviews for two domain sources and writes them to BigQuery.
 
 | `--source` | Domain list | Target table |
 |---|---|---|
-| `default` | `leads.leads_table` (Target prospecting list) | `reviews.reviews_raw` |
+| `default` | `leads.leads_raw` (Target prospecting list) | `reviews.reviews_raw` |
 | `fr` | `analytics.leads_builtwith_fr` (BuiltWith FR seed) | `reviews.reviews_raw_fr` |
 
 ## Usage
